@@ -1,14 +1,22 @@
 # AI Engineering Challenge
 
-Daily hands-on learning of AI Engineering fundamentals.
+Daily hands-on projects building AI Engineering fundamentals from scratch.
 
-## Day 1 - LLM Basics
-- First API call to GPT-4o-mini
-- Built a multi-turn chatbot
-- Learned about temperature, max_tokens, message history
+## Structure
 
-## How to run
-1. Clone this repo
-2. Create a `.env` file with your `OPENAI_API_KEY`
-3. Install dependencies: `pip install openai python-dotenv`
-4. Run: `python chat.py`
+| Day | Topic | Description |
+|-----|-------|-------------|
+| [day01](./day01/) | LLM Basics | Multi-turn CLI chatbot with GPT-4o-mini |
+| [day02](./day02/) | LLM Judge | Prompt comparison with an LLM-as-judge evaluator |
+
+## Getting started
+
+Each day is a self-contained project with its own `README.md`, `requirements.txt`, and source code. Navigate into a day's folder and follow its setup instructions.
+
+```bash
+cd day01
+python -m venv venv && source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+cp .env.example .env  # then add your OPENAI_API_KEY
+python chat.py
+```

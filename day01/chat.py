@@ -38,6 +38,3 @@ while True:
     })
 
     print(f"\nGPT: {assistant_reply}\n")
-
-
-print(response.choices[0].message.content)
