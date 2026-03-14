@@ -8,6 +8,7 @@ Daily hands-on projects building AI Engineering fundamentals from scratch.
 |-----|-------|-------------|
 | [day01](./day01/) | LLM Basics | Multi-turn CLI chatbot with GPT-4o-mini |
 | [day02](./day02/) | LLM Judge | Prompt comparison with an LLM-as-judge evaluator |
+| [day03](./day03/) | Structured Output | Streamlit job posting parser with Gemini 2.5 Flash + Pydantic |
 
 ## Getting started
 
@@ -19,4 +20,7 @@ python -m venv venv && source venv/bin/activate  # or venv\Scripts\activate on W
 pip install -r requirements.txt
 cp .env.example .env  # then add your OPENAI_API_KEY
 python chat.py
+
+# day03 uses Streamlit:
+# streamlit run day03/app.py
 ```
