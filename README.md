@@ -9,6 +9,7 @@ Daily hands-on projects building AI Engineering fundamentals from scratch.
 | [day01](./day01/) | LLM Basics | Multi-turn CLI chatbot with GPT-4o-mini |
 | [day02](./day02/) | LLM Judge | Prompt comparison with an LLM-as-judge evaluator |
 | [day03](./day03/) | Structured Output | Streamlit job posting parser with Gemini 2.5 Flash + Pydantic |
+| [day04](./day04/) | Local RAG | PDF Q&A bot with Ollama + FAISS (fully local) |
 
 ## Getting started
 
