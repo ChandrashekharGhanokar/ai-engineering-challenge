@@ -10,6 +10,7 @@ Daily hands-on projects building AI Engineering fundamentals from scratch.
 | [day02](./day02/) | LLM Judge | Prompt comparison with an LLM-as-judge evaluator |
 | [day03](./day03/) | Structured Output | Streamlit job posting parser with Gemini 2.5 Flash + Pydantic |
 | [day04](./day04/) | Local RAG | PDF Q&A bot with Ollama + FAISS (fully local) |
+| [day05](./day05/) | Finance Assistant | Tool-calling agent with Streamlit UI — stocks, exchange rates, compound interest |
 
 ## Getting started
 
@@ -22,6 +23,7 @@ pip install -r requirements.txt
 cp .env.example .env  # then add your OPENAI_API_KEY
 python chat.py
 
-# day03 uses Streamlit:
+# day03 and day05 use Streamlit:
 # streamlit run day03/app.py
+# streamlit run day05/app.py
 ```
