@@ -1,0 +1,8 @@
+{
+  "name": "day6-embeddings",
+  "version": "1.0.0",
+  "description": "Day 6 — Semantic Similarity Search with Embeddings",
+  "scripts": {
+    "start": "npx serve . -p 3000"
+  }
+}

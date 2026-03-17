@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Day 6 — Embeddings & Similarity Search</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #161a22;
+      --border:    #252b38;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --accent:    #7c6af7;
+      --accent-dim:#3b327a;
+      --green:     #22c55e;
+      --amber:     #f59e0b;
+      --red:       #ef4444;
+      --gray:      #475569;
+      --radius:    10px;
+      --mono:      'DM Mono', monospace;
+      --sans:      'DM Sans', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 2rem 1rem 4rem;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2rem;
+    }
+
+    .day-badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      padding: 2px 8px;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-size: 1.9rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    h1 span { color: var(--accent); }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
+      font-family: var(--mono);
+    }
+
+    /* ── Status bar ── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.65rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 1.5rem;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+    }
+
+    .status-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .status-dot.green  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.red    { background: var(--red);   box-shadow: 0 0 6px var(--red);   }
+    .status-dot.amber  { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+
+    .status-text { flex: 1; color: var(--muted); }
+    .status-text.ok    { color: var(--green); }
+    .status-text.error { color: var(--red); }
+    .status-text.warn  { color: var(--amber); }
+
+    .cors-tip {
+      display: none;
+      margin-top: 0.5rem;
+      padding: 0.6rem 0.9rem;
+      background: #1a1200;
+      border: 1px solid var(--amber);
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--amber);
+      line-height: 1.7;
+    }
+    .cors-tip.show { display: block; }
+    .cors-tip code {
+      background: rgba(245,158,11,0.15);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .card-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Corpus list ── */
+    .corpus-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .corpus-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .corpus-item input[type="text"] {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      padding: 0.45rem 0.7rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .corpus-item input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-icon {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0.35rem 0.55rem;
+      font-size: 0.85rem;
+      line-height: 1;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .btn-icon:hover { border-color: var(--red); color: var(--red); }
+    .btn-add {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      padding: 0.4rem 0.8rem;
+      color: var(--accent);
+      border-color: var(--accent-dim);
+    }
+    .btn-add:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+    /* ── Query ── */
+    textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      padding: 0.65rem 0.9rem;
+      resize: vertical;
+      min-height: 68px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea:focus { border-color: var(--accent); }
+
+    /* ── Button ── */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.9rem;
+      padding: 0.6rem 1.4rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-family: var(--sans);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-primary:hover  { opacity: 0.88; }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-recheck {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      margin-left: auto;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-recheck:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Progress bar ── */
+    .progress-wrap {
+      display: none;
+      margin-top: 0.9rem;
+    }
+    .progress-wrap.show { display: block; }
+    .progress-label {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .progress-track {
+      height: 5px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #a78bfa);
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.35s ease;
+    }
+
+    /* ── Results ── */
+    .results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+
+    .result-item {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.65rem 1rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .result-header:hover { background: rgba(255,255,255,0.03); }
+
+    .result-rank {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+      min-width: 1.4rem;
+    }
+
+    .result-score {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      font-weight: 500;
+      min-width: 4.2rem;
+      padding: 2px 7px;
+      border-radius: 5px;
+      text-align: center;
+    }
+    .score-green { background: rgba(34,197,94,0.15);  color: var(--green); border: 1px solid rgba(34,197,94,0.3);  }
+    .score-amber { background: rgba(245,158,11,0.15); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+    .score-gray  { background: rgba(71,85,105,0.2);  color: var(--gray);  border: 1px solid rgba(71,85,105,0.3);  }
+
+    .result-text {
+      flex: 1;
+      font-size: 0.875rem;
+      color: var(--text);
+    }
+
+    .result-chevron {
+      color: var(--muted);
+      font-size: 0.75rem;
+      transition: transform 0.2s;
+    }
+    .result-item.open .result-chevron { transform: rotate(180deg); }
+
+    /* ── Heatmap ── */
+    .heatmap-wrap {
+      display: none;
+      padding: 0.75rem 1rem 0.9rem;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .result-item.open .heatmap-wrap { display: block; }
+
+    .heatmap-label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .heatmap-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+    }
+
+    .heatmap-cell {
+      width: 9px;
+      height: 9px;
+      border-radius: 2px;
+      cursor: default;
+      position: relative;
+    }
+
+    /* Tooltip */
+    .heatmap-cell::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 5px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e2433;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.1s;
+      z-index: 10;
+    }
+    .heatmap-cell:hover::after { opacity: 1; }
+
+    /* ── Learnings ── */
+    .learnings {
+      background: rgba(124,106,247,0.07);
+      border: 1px solid var(--accent-dim);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.4rem;
+      margin-top: 1.5rem;
+    }
+
+    .learnings-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+
+    .learnings ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .learnings li {
+      font-size: 0.855rem;
+      color: var(--muted);
+      padding-left: 1.1rem;
+      position: relative;
+    }
+    .learnings li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-size: 0.75rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      padding: 1.5rem 0;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="day-badge">Day 6 / 30</div>
+    <h1>Embeddings &amp; <span>Similarity Search</span></h1>
+    <div class="subtitle">nomic-embed-text · cosine similarity · 768-dim vectors · fully offline</div>
+  </header>
+
+  <!-- Status -->
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;">
+      Ollama Status
+      <button class="btn-recheck" id="btnRecheck">↺ recheck</button>
+    </div>
+    <div class="status-bar" id="statusBar">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">Checking Ollama…</span>
+    </div>
+    <div class="cors-tip" id="corsTip">
+      <strong>CORS / connection issue detected.</strong><br/>
+      Start Ollama with origins allowed:<br/>
+      <code>set OLLAMA_ORIGINS=* &amp;&amp; ollama serve</code><br/>
+      Then ensure <code>nomic-embed-text</code> is pulled:<br/>
+      <code>ollama pull nomic-embed-text</code>
+    </div>
+  </div>
+
+  <!-- Corpus -->
+  <div class="card">
+    <div class="card-title">Corpus — sentences to search</div>
+    <div class="corpus-list" id="corpusList"></div>
+    <button class="btn-icon btn-add" id="btnAdd">+ add sentence</button>
+  </div>
+
+  <!-- Query -->
+  <div class="card">
+    <div class="card-title">Query</div>
+    <textarea id="queryInput" rows="2" placeholder="Type your search query…">What programming language is best for machine learning?</textarea>
+    <button class="btn-primary" id="btnSearch">
+      <span id="searchIcon">⚡</span> Run similarity search
+    </button>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-label" id="progressLabel">Embedding…</div>
+      <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="card" id="resultsCard" style="display:none;">
+    <div class="card-title">Results — ranked by cosine similarity</div>
+    <div class="results-list" id="resultsList"></div>
+  </div>
+
+  <!-- Learnings -->
+  <div class="learnings">
+    <div class="learnings-title">Key Concepts</div>
+    <ul>
+      <li>Embeddings map text into a high-dimensional vector space where semantic similarity = geometric proximity.</li>
+      <li><code style="font-family:var(--mono);font-size:0.78rem;color:var(--accent);">nomic-embed-text</code> produces 768-dimensional float32 vectors — runs fully offline via Ollama.</li>
+      <li>Cosine similarity measures the angle between two vectors: <code style="font-family:var(--mono);font-size:0.78rem;color:var(--accent);">dot(a,b) / (|a|·|b|)</code>. Range: −1 to 1.</li>
+      <li>Scores ≥ 0.75 = strong semantic match &nbsp;|&nbsp; ≥ 0.50 = related &nbsp;|&nbsp; &lt; 0.50 = weak/unrelated.</li>
+      <li>The heatmap visualises the raw activation pattern of the 768-dim vector (first 512 shown).</li>
+      <li>In production, vectors are pre-computed and stored in a vector DB (pgvector, Qdrant, Weaviate).</li>
+    </ul>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+  const OLLAMA = 'http://localhost:11434';
+  const MODEL  = 'nomic-embed-text';
+  const DIMS_SHOWN = 512;
+
+  const DEFAULT_CORPUS = [
+    "Python is widely used for machine learning and data science.",
+    "JavaScript is the language of the web and runs in browsers.",
+    "Rust provides memory safety without a garbage collector.",
+    "Go is designed for fast compilation and simple concurrency.",
+    "The Eiffel Tower is a wrought-iron lattice tower in Paris.",
+    "Deep learning relies on multi-layer neural networks.",
+    "PostgreSQL supports vector similarity search via pgvector.",
+    "TypeScript adds static typing on top of JavaScript.",
+    "Cosine similarity measures the angle between two vectors.",
+    "Paris is the capital city of France."
+  ];
+
+  // ── DOM refs ──────────────────────────────────────────────────────────
+  const statusDot    = document.getElementById('statusDot');
+  const statusText   = document.getElementById('statusText');
+  const corsTip      = document.getElementById('corsTip');
+  const btnRecheck   = document.getElementById('btnRecheck');
+  const corpusList   = document.getElementById('corpusList');
+  const btnAdd       = document.getElementById('btnAdd');
+  const queryInput   = document.getElementById('queryInput');
+  const btnSearch    = document.getElementById('btnSearch');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressBar  = document.getElementById('progressBar');
+  const progressLabel= document.getElementById('progressLabel');
+  const resultsCard  = document.getElementById('resultsCard');
+  const resultsList  = document.getElementById('resultsList');
+
+  // ── Ollama status check ───────────────────────────────────────────────
+  async function checkOllama() {
+    statusDot.className  = 'status-dot';
+    statusText.className = 'status-text';
+    statusText.textContent = 'Checking Ollama…';
+    corsTip.classList.remove('show');
+
+    try {
+      const res = await fetch(`${OLLAMA}/api/tags`, { signal: AbortSignal.timeout(4000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const models = (data.models || []).map(m => m.name);
+      const hasModel = models.some(n => n.startsWith(MODEL));
+
+      if (hasModel) {
+        statusDot.classList.add('green');
+        statusText.classList.add('ok');
+        statusText.textContent = `✓ Ollama running · ${MODEL} found`;
+      } else {
+        statusDot.classList.add('amber');
+        statusText.classList.add('warn');
+        statusText.textContent = `⚠ Ollama running · ${MODEL} not found — run: ollama pull ${MODEL}`;
+      }
+    } catch (err) {
+      statusDot.classList.add('red');
+      statusText.classList.add('error');
+      statusText.textContent = `✗ Cannot reach Ollama — ${err.message}`;
+      corsTip.classList.add('show');
+    }
+  }
+
+  btnRecheck.addEventListener('click', checkOllama);
+  checkOllama();
+
+  // ── Corpus management ─────────────────────────────────────────────────
+  function addSentence(text = '') {
+    const item = document.createElement('div');
+    item.className = 'corpus-item';
+
+    const input = document.createElement('input');
+    input.type  = 'text';
+    input.value = text;
+    input.placeholder = 'Enter a sentence…';
+
+    const del = document.createElement('button');
+    del.className = 'btn-icon';
+    del.title     = 'Remove';
+    del.textContent = '×';
+    del.addEventListener('click', () => item.remove());
+
+    item.appendChild(input);
+    item.appendChild(del);
+    corpusList.appendChild(item);
+    if (!text) input.focus();
+  }
+
+  DEFAULT_CORPUS.forEach(s => addSentence(s));
+  btnAdd.addEventListener('click', () => addSentence());
+
+  function getCorpus() {
+    return [...corpusList.querySelectorAll('input')]
+      .map(i => i.value.trim())
+      .filter(Boolean);
+  }
+
+  // ── Embedding via Ollama ──────────────────────────────────────────────
+  async function embed(texts) {
+    const res = await fetch(`${OLLAMA}/api/embed`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ model: MODEL, input: texts })
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`Ollama error ${res.status}: ${txt}`);
+    }
+    const data = await res.json();
+    return data.embeddings; // float[][]
+  }
+
+  // ── Cosine similarity ─────────────────────────────────────────────────
+  function cosine(a, b) {
+    let dot = 0, na = 0, nb = 0;
+    for (let i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+      na  += a[i] * a[i];
+      nb  += b[i] * b[i];
+    }
+    return dot / (Math.sqrt(na) * Math.sqrt(nb));
+  }
+
+  // ── Heatmap ───────────────────────────────────────────────────────────
+  function cellColor(v) {
+    // v in [-1, 1] → warm for positive, cool for negative
+    const t = (v + 1) / 2; // 0..1
+    if (t >= 0.6) {
+      // warm: orange-ish → bright
+      const r = 180 + Math.round(75 * ((t - 0.6) / 0.4));
+      const g = Math.round(80 * ((t - 0.6) / 0.4));
+      return `rgb(${r},${g},30)`;
+    } else if (t >= 0.4) {
+      // mid: neutral gray-purple
+      const l = Math.round(40 + 30 * ((t - 0.4) / 0.2));
+      return `rgb(${l},${l},${Math.round(l * 1.4)})`;
+    } else {
+      // cool: deep blue
+      const b = 80 + Math.round(100 * (t / 0.4));
+      return `rgb(20,30,${b})`;
+    }
+  }
+
+  function buildHeatmap(vector) {
+    const dims = Math.min(DIMS_SHOWN, vector.length);
+    const grid = document.createElement('div');
+    grid.className = 'heatmap-grid';
+
+    for (let i = 0; i < dims; i++) {
+      const v   = vector[i];
+      const cell = document.createElement('div');
+      cell.className = 'heatmap-cell';
+      cell.style.background = cellColor(v);
+      cell.setAttribute('data-tip', `dim ${i}: ${v.toFixed(4)}`);
+      grid.appendChild(cell);
+    }
+    return grid;
+  }
+
+  // ── Render results ────────────────────────────────────────────────────
+  function scoreClass(s) {
+    if (s >= 0.75) return 'score-green';
+    if (s >= 0.50) return 'score-amber';
+    return 'score-gray';
+  }
+
+  function renderResults(ranked) {
+    resultsList.innerHTML = '';
+    if (!ranked.length) {
+      resultsList.innerHTML = '<div class="empty-state">No results.</div>';
+      return;
+    }
+
+    ranked.forEach((r, i) => {
+      const item = document.createElement('div');
+      item.className = 'result-item';
+
+      const header = document.createElement('div');
+      header.className = 'result-header';
+      header.innerHTML = `
+        <span class="result-rank">#${i + 1}</span>
+        <span class="result-score ${scoreClass(r.score)}">${r.score.toFixed(4)}</span>
+        <span class="result-text">${escHtml(r.text)}</span>
+        <span class="result-chevron">▾</span>
+      `;
+
+      const heatWrap = document.createElement('div');
+      heatWrap.className = 'heatmap-wrap';
+      const heatLabel = document.createElement('div');
+      heatLabel.className = 'heatmap-label';
+      heatLabel.textContent = `768-dim vector · showing first ${Math.min(DIMS_SHOWN, r.vector.length)} dimensions · hover for value`;
+      heatWrap.appendChild(heatLabel);
+      heatWrap.appendChild(buildHeatmap(r.vector));
+
+      header.addEventListener('click', () => item.classList.toggle('open'));
+
+      item.appendChild(header);
+      item.appendChild(heatWrap);
+      resultsList.appendChild(item);
+    });
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Search ────────────────────────────────────────────────────────────
+  function setProgress(pct, label) {
+    progressBar.style.width  = `${pct}%`;
+    progressLabel.textContent = label;
+  }
+
+  btnSearch.addEventListener('click', async () => {
+    const corpus = getCorpus();
+    const query  = queryInput.value.trim();
+
+    if (!query)  { alert('Please enter a query.'); return; }
+    if (!corpus.length) { alert('Add at least one sentence to the corpus.'); return; }
+
+    btnSearch.disabled = true;
+    resultsCard.style.display = 'none';
+    progressWrap.classList.add('show');
+    setProgress(5, 'Sending corpus to Ollama…');
+
+    try {
+      // Embed corpus
+      const all = [query, ...corpus];
+      setProgress(15, `Embedding ${all.length} texts…`);
+      const vectors = await embed(all);
+      setProgress(80, 'Computing cosine similarity…');
+
+      const qVec = vectors[0];
+      const ranked = corpus.map((text, i) => ({
+        text,
+        score:  cosine(qVec, vectors[i + 1]),
+        vector: vectors[i + 1]
+      })).sort((a, b) => b.score - a.score);
+
+      setProgress(100, 'Done!');
+      renderResults(ranked);
+      resultsCard.style.display = 'block';
+      setTimeout(() => progressWrap.classList.remove('show'), 800);
+    } catch (err) {
+      setProgress(0, '');
+      progressWrap.classList.remove('show');
+      alert(`Error: ${err.message}\n\nMake sure Ollama is running with CORS allowed and ${MODEL} is pulled.`);
+      checkOllama();
+    } finally {
+      btnSearch.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
