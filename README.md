@@ -12,6 +12,7 @@ Daily hands-on projects building AI Engineering fundamentals from scratch.
 | [day04](./day04/) | Local RAG | PDF Q&A bot with Ollama + FAISS (fully local) |
 | [day05](./day05/) | Finance Assistant | Tool-calling agent with Streamlit UI — stocks, exchange rates, compound interest |
 | [day06](./day06/) | Embeddings | Semantic similarity search with nomic-embed-text + Ollama  |
+| [day07](./day07/) | Research Agent | Autonomous deep research agent with Ollama tool-calling, Tavily search, and Jina Reader |
 
 ## Getting started
 
