@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CodeShield — AI Security Auditor</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --orange: #f0883e;
+      --red: #f85149;
+      --purple: #bc8cff;
+      --critical: #f85149;
+      --high: #f0883e;
+      --medium: #d29922;
+      --low: #3fb950;
+      --info: #58a6ff;
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* NAV */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-brand .shield-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      display: inline-block;
+      transition: background 0.3s;
+    }
+
+    .status-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.error { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+    .model-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* LAYOUT */
+    .app {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      flex: 1;
+      overflow: hidden;
+      height: calc(100vh - 56px);
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .sidebar-section h3 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    select, textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 13px;
+      padding: 8px 10px;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+
+    select:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    /* CHECK TOGGLES */
+    .check-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .check-item input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .check-icon {
+      font-size: 14px;
+    }
+
+    /* SEVERITY FILTERS */
+    .filter-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .filter-pill {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .filter-pill[data-sev="critical"] { border-color: var(--critical); color: var(--critical); }
+    .filter-pill[data-sev="high"]     { border-color: var(--high);     color: var(--high); }
+    .filter-pill[data-sev="medium"]   { border-color: var(--medium);   color: var(--medium); }
+    .filter-pill[data-sev="low"]      { border-color: var(--low);      color: var(--low); }
+    .filter-pill[data-sev="info"]     { border-color: var(--info);     color: var(--info); }
+
+    .filter-pill.active[data-sev="critical"] { background: var(--critical); color: #fff; }
+    .filter-pill.active[data-sev="high"]     { background: var(--high);     color: #fff; }
+    .filter-pill.active[data-sev="medium"]   { background: var(--medium);   color: #000; }
+    .filter-pill.active[data-sev="low"]      { background: var(--low);      color: #000; }
+    .filter-pill.active[data-sev="info"]     { background: var(--info);     color: #fff; }
+
+    /* SAMPLE BUTTONS */
+    .sample-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sample-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 8px 10px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+    }
+
+    .sample-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    /* MAIN */
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* EDITOR AREA */
+    .editor-area {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .editor-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .editor-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .lang-select {
+      width: auto;
+      min-width: 120px;
+    }
+
+    #codeEditor {
+      font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      resize: vertical;
+      min-height: 200px;
+      max-height: 40vh;
+      background: #010409;
+      border-color: var(--border);
+      tab-size: 2;
+    }
+
+    .btn {
+      padding: 8px 18px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0d1117;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    /* PROGRESS */
+    .progress-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-bar.active { display: block; }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--purple));
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.3s ease;
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { opacity: 1; }
+      50% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+
+    /* RESULTS AREA */
+    .results-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* SCORE RING */
+    .score-section {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      animation: fadeIn 0.4s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .score-ring-wrap {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      flex-shrink: 0;
+    }
+
+    .score-ring-wrap svg {
+      transform: rotate(-90deg);
+    }
+
+    .score-ring-bg {
+      fill: none;
+      stroke: var(--surface2);
+      stroke-width: 8;
+    }
+
+    .score-ring-fill {
+      fill: none;
+      stroke-width: 8;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s ease, stroke 0.5s ease;
+    }
+
+    .score-number {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .score-label {
+      font-size: 9px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .score-summary { flex: 1; }
+
+    .score-summary h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .score-summary p {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .score-meta {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .meta-chip {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 10px;
+    }
+
+    .export-btns {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    /* ISSUE CARDS */
+    .issues-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .issues-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .issues-count {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .issues-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .issue-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      border-left: 4px solid;
+      overflow: hidden;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .issue-card[data-sev="critical"] { border-left-color: var(--critical); }
+    .issue-card[data-sev="high"]     { border-left-color: var(--high); }
+    .issue-card[data-sev="medium"]   { border-left-color: var(--medium); }
+    .issue-card[data-sev="low"]      { border-left-color: var(--low); }
+    .issue-card[data-sev="info"]     { border-left-color: var(--info); }
+
+    .issue-card.hidden { display: none; }
+
+    .issue-header {
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .sev-badge {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .sev-badge.critical { background: rgba(248,81,73,0.15); color: var(--critical); }
+    .sev-badge.high     { background: rgba(240,136,62,0.15); color: var(--high); }
+    .sev-badge.medium   { background: rgba(210,153,34,0.15); color: var(--medium); }
+    .sev-badge.low      { background: rgba(63,185,80,0.15);  color: var(--low); }
+    .sev-badge.info     { background: rgba(88,166,255,0.15); color: var(--info); }
+
+    .issue-title-wrap { flex: 1; }
+
+    .issue-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .issue-meta {
+      display: flex;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .issue-chevron {
+      color: var(--text-muted);
+      transition: transform 0.2s;
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .issue-card.expanded .issue-chevron {
+      transform: rotate(90deg);
+    }
+
+    .issue-body {
+      padding: 0 16px 14px 16px;
+      display: none;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+    }
+
+    .issue-card.expanded .issue-body { display: block; }
+
+    .issue-body p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    .recommendation {
+      background: rgba(63,185,80,0.05);
+      border: 1px solid rgba(63,185,80,0.2);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .recommendation strong {
+      color: var(--green);
+      display: block;
+      margin-bottom: 4px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* HISTORY */
+    .history-section {
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+
+    .history-section h3 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .history-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .history-item:hover { border-color: var(--accent); }
+
+    .history-score {
+      font-weight: 700;
+      min-width: 36px;
+    }
+
+    .history-info { flex: 1; color: var(--text-muted); }
+    .history-time { color: var(--text-muted); font-size: 11px; }
+
+    /* EMPTY STATE */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .empty-icon { font-size: 48px; opacity: 0.4; }
+    .empty-state h3 { font-size: 16px; color: var(--text); }
+    .empty-state p  { font-size: 14px; max-width: 360px; line-height: 1.5; }
+
+    /* FOOTER */
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 24px;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    footer span { color: var(--accent); }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" href="#">
+    <div class="shield-icon">🛡️</div>
+    CodeShield
+  </a>
+  <div class="nav-status">
+    <span class="status-dot" id="statusDot" title="Ollama status"></span>
+    <span id="statusText" style="font-size:13px;color:var(--text-muted)">Checking…</span>
+    <span class="model-badge" id="modelBadge">—</span>
+  </div>
+</nav>
+
+<!-- APP GRID -->
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <!-- MODEL PICKER -->
+    <div class="sidebar-section">
+      <h3>Model</h3>
+      <div class="form-group">
+        <label for="modelSelect">Ollama model</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="modelSelect" style="flex:1">
+            <option value="qwen2.5:7b">qwen2.5:7b</option>
+          </select>
+          <button onclick="checkHealth()" title="Refresh model list"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-muted);padding:6px 8px;cursor:pointer;font-size:14px">⟳</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECURITY CHECKS -->
+    <div class="sidebar-section">
+      <h3>Security Checks</h3>
+      <div class="check-list">
+        <label class="check-item">
+          <input type="checkbox" name="check" value="injection" checked />
+          <span class="check-icon">💉</span> Injection Flaws
+        </label>
+        <label class="check-item">
+          <input type="checkbox" name="check" value="auth" checked />
+          <span class="check-icon">🔑</span> Auth & Access Control
+        </label>
+        <label class="check-item">
+          <input type="checkbox" name="check" value="crypto" checked />
+          <span class="check-icon">🔐</span> Cryptographic Failures
+        </label>
+        <label class="check-item">
+          <input type="checkbox" name="check" value="secrets" checked />
+          <span class="check-icon">🤫</span> Hardcoded Secrets
+        </label>
+        <label class="check-item">
+          <input type="checkbox" name="check" value="xss" checked />
+          <span class="check-icon">🌐</span> XSS Vulnerabilities
+        </label>
+        <label class="check-item">
+          <input type="checkbox" name="check" value="insecure_deps" checked />
+          <span class="check-icon">📦</span> Insecure Dependencies
+        </label>
+      </div>
+    </div>
+
+    <!-- SEVERITY FILTERS -->
+    <div class="sidebar-section">
+      <h3>Severity Filter</h3>
+      <div class="filter-pills">
+        <span class="filter-pill active" data-sev="critical">Critical</span>
+        <span class="filter-pill active" data-sev="high">High</span>
+        <span class="filter-pill active" data-sev="medium">Medium</span>
+        <span class="filter-pill active" data-sev="low">Low</span>
+        <span class="filter-pill active" data-sev="info">Info</span>
+      </div>
+    </div>
+
+    <!-- SAMPLES -->
+    <div class="sidebar-section">
+      <h3>Sample Code</h3>
+      <div class="sample-list">
+        <button class="sample-btn" onclick="loadSample('node-hardcoded')">⚡ Node.js — Hardcoded Creds</button>
+        <button class="sample-btn" onclick="loadSample('python-sql')">🐍 Python — SQL Injection</button>
+        <button class="sample-btn" onclick="loadSample('php-xss')">🐘 PHP — XSS &amp; Weak Crypto</button>
+        <button class="sample-btn" onclick="loadSample('go-clean')">🔵 Go — Clean Code</button>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="history-section">
+      <h3>Recent Audits</h3>
+      <div class="history-list" id="historyList">
+        <div style="font-size:12px;color:var(--text-muted);padding:4px 0">No audits yet.</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- EDITOR -->
+    <div class="editor-area">
+      <div class="editor-header">
+        <h2>Code Editor</h2>
+        <div class="editor-controls">
+          <select class="lang-select" id="langSelect">
+            <option value="javascript">JavaScript</option>
+            <option value="python">Python</option>
+            <option value="php">PHP</option>
+            <option value="go">Go</option>
+            <option value="java">Java</option>
+            <option value="typescript">TypeScript</option>
+            <option value="ruby">Ruby</option>
+            <option value="bash">Bash</option>
+            <option value="sql">SQL</option>
+          </select>
+          <button class="btn btn-ghost" onclick="clearEditor()">Clear</button>
+          <button class="btn btn-primary" id="auditBtn" onclick="runAudit()">
+            🔍 Run Security Audit
+          </button>
+        </div>
+      </div>
+
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+
+      <textarea
+        id="codeEditor"
+        placeholder="Paste your code here or load a sample from the sidebar…"
+        rows="12"
+        spellcheck="false"
+      ></textarea>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results-area" id="resultsArea">
+      <div class="empty-state">
+        <div class="empty-icon">🛡️</div>
+        <h3>Ready to Audit</h3>
+        <p>Paste your code above and click "Run Security Audit" to analyze it for vulnerabilities. Load a sample from the sidebar to get started quickly.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span>CodeShield</span> — Day 8 Project · Local AI Security Auditor · Powered by Ollama
+</footer>
+
+<script>
+  // ─── STATE ───────────────────────────────────────────────────
+  const API = 'http://localhost:8000';
+  let lastResult = null;
+  let lastCode   = '';
+  let history    = [];
+  let activeFilters = new Set(['critical','high','medium','low','info']);
+
+  // ─── SAMPLES ─────────────────────────────────────────────────
+  const SAMPLES = {
+    'node-hardcoded': {
+      lang: 'javascript',
+      code: `const mysql = require('mysql');
+const jwt   = require('jsonwebtoken');
+
+// Database connection with hardcoded credentials
+const db = mysql.createConnection({
+  host     : 'localhost',
+  user     : 'root',
+  password : 'SuperSecret123!',
+  database : 'users_db'
+});
+
+const JWT_SECRET = 'my-super-secret-key-12345';
+
+function getUserData(userId) {
+  // SQL Injection vulnerability
+  const query = "SELECT * FROM users WHERE id = " + userId;
+  db.query(query, (err, results) => {
+    console.log(results);
+  });
+}
+
+function createToken(user) {
+  return jwt.sign({ id: user.id, admin: user.admin }, JWT_SECRET);
+}
+
+// Insecure eval usage
+function runUserCode(code) {
+  return eval(code);
+}
+
+module.exports = { getUserData, createToken, runUserCode };`
+    },
+    'python-sql': {
+      lang: 'python',
+      code: `import sqlite3
+import hashlib
+import os
+
+DB_PASSWORD = "admin123"
+API_KEY = "sk-prod-abc123xyz789secret"
+
+def authenticate(username, password):
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    # SQL injection vulnerability
+    query = f"SELECT * FROM users WHERE username='{username}' AND password='{password}'"
+    cursor.execute(query)
+    return cursor.fetchone()
+
+def hash_password(password):
+    # Weak hashing — MD5 with no salt
+    return hashlib.md5(password.encode()).hexdigest()
+
+def get_user_file(filename):
+    # Path traversal vulnerability
+    base_dir = "/var/app/files/"
+    return open(base_dir + filename).read()
+
+def execute_report(report_name):
+    # Command injection
+    os.system(f"python reports/{report_name}.py")`
+    },
+    'php-xss': {
+      lang: 'php',
+      code: `<?php
+define('DB_PASS', 'root');
+define('SECRET', 'abc123');
+
+function showGreeting() {
+    // XSS vulnerability
+    echo "<h1>Hello, " . $_GET['name'] . "!</h1>";
+}
+
+function encryptData($data) {
+    // Weak encryption — DES
+    return openssl_encrypt($data, 'DES-ECB', 'weakkey');
+}
+
+function login($username, $password) {
+    $conn = new mysqli('localhost', 'root', DB_PASS, 'app');
+    // SQL injection
+    $sql = "SELECT * FROM users WHERE user='$username' AND pass='$password'";
+    $result = $conn->query($sql);
+    return $result->fetch_assoc();
+}
+
+function renderPage($template) {
+    // Local file inclusion
+    include($_GET['page'] . '.php');
+}
+?>`
+    },
+    'go-clean': {
+      lang: 'go',
+      code: `package main
+
+import (
+	"database/sql"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+
+	"golang.org/x/crypto/bcrypt"
+	_ "github.com/lib/pq"
+)
+
+var db *sql.DB
+
+func initDB() {
+	dsn := os.Getenv("DATABASE_URL")
+	var err error
+	db, err = sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
+}
+
+func getUser(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("id")
+	var name string
+	// Parameterised query — safe from SQL injection
+	err := db.QueryRow("SELECT name FROM users WHERE id = $1", userID).Scan(&name)
+	if err != nil {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+	fmt.Fprintf(w, "User: %s", name)
+}
+
+func main() {
+	initDB()
+	http.HandleFunc("/user", getUser)
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}`
+    }
+  };
+
+  function loadSample(key) {
+    const s = SAMPLES[key];
+    if (!s) return;
+    document.getElementById('codeEditor').value = s.code;
+    document.getElementById('langSelect').value  = s.lang;
+  }
+
+  function clearEditor() {
+    document.getElementById('codeEditor').value = '';
+    document.getElementById('resultsArea').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🛡️</div>
+        <h3>Ready to Audit</h3>
+        <p>Paste your code above and click "Run Security Audit" to analyze it for vulnerabilities.</p>
+      </div>`;
+    lastResult = null;
+  }
+
+  // ─── HEALTH CHECK ─────────────────────────────────────────────
+  async function checkHealth() {
+    try {
+      const res  = await fetch(`${API}/health`);
+      const data = await res.json();
+      const dot  = document.getElementById('statusDot');
+      const txt  = document.getElementById('statusText');
+      if (data.status === 'ok') {
+        dot.className = 'status-dot ok';
+        txt.textContent = 'Ollama connected';
+      } else {
+        dot.className = 'status-dot error';
+        txt.textContent = 'Ollama unreachable';
+      }
+    } catch {
+      document.getElementById('statusDot').className = 'status-dot error';
+      document.getElementById('statusText').textContent = 'Backend offline';
+    }
+
+    // Load models
+    try {
+      const res    = await fetch(`${API}/models`);
+      const data   = await res.json();
+      const models = data.models || [];
+      if (models.length > 0) {
+        const select = document.getElementById('modelSelect');
+        select.innerHTML = '';
+        models.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m; opt.textContent = m;
+          select.appendChild(opt);
+        });
+        document.getElementById('modelBadge').textContent = models[0];
+      }
+    } catch { /* ignore */ }
+  }
+
+  // ─── AUDIT ────────────────────────────────────────────────────
+  async function runAudit() {
+    const code = document.getElementById('codeEditor').value.trim();
+    if (!code) {
+      alert('Please paste some code first.');
+      return;
+    }
+
+    const checks = Array.from(document.querySelectorAll('input[name="check"]:checked'))
+                        .map(el => el.value);
+    if (checks.length === 0) {
+      alert('Select at least one security check.');
+      return;
+    }
+
+    const model    = document.getElementById('modelSelect').value;
+    if (!model) {
+      alert('No model available. Pull one first:\n  ollama pull qwen2.5:7b');
+      return;
+    }
+    const language = document.getElementById('langSelect').value;
+
+    // UI: loading state
+    const btn = document.getElementById('auditBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Analyzing…';
+
+    const bar  = document.getElementById('progressBar');
+    const fill = document.getElementById('progressFill');
+    bar.classList.add('active');
+
+    // Fake progress
+    let pct = 0;
+    const ticker = setInterval(() => {
+      pct = Math.min(pct + Math.random() * 8, 90);
+      fill.style.width = pct + '%';
+    }, 400);
+
+    try {
+      const res = await fetch(`${API}/audit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, language, model, checks })
+      });
+
+      clearInterval(ticker);
+      fill.style.width = '100%';
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Audit failed');
+      }
+
+      const data = await res.json();
+      lastResult = data;
+      lastCode   = code;
+
+      addHistory(data, language);
+      renderResults(data);
+
+    } catch (e) {
+      clearInterval(ticker);
+      document.getElementById('resultsArea').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">❌</div>
+          <h3>Audit Failed</h3>
+          <p>${e.message}</p>
+        </div>`;
+    } finally {
+      setTimeout(() => {
+        bar.classList.remove('active');
+        fill.style.width = '0%';
+      }, 600);
+      btn.disabled = false;
+      btn.innerHTML = '🔍 Run Security Audit';
+    }
+  }
+
+  // ─── RENDER RESULTS ───────────────────────────────────────────
+  function renderResults(data) {
+    const { score, summary, issues, model_used, language } = data;
+
+    // Score color
+    let scoreColor = 'var(--green)';
+    if      (score < 40) scoreColor = 'var(--critical)';
+    else if (score < 60) scoreColor = 'var(--high)';
+    else if (score < 75) scoreColor = 'var(--medium)';
+    else if (score < 90) scoreColor = 'var(--low)';
+
+    // Ring math
+    const r = 40;
+    const circ = 2 * Math.PI * r;
+    const dash  = ((100 - score) / 100) * circ;
+
+    // Counts
+    const counts = { critical:0, high:0, medium:0, low:0, info:0 };
+    issues.forEach(i => { if (counts[i.severity] !== undefined) counts[i.severity]++; });
+
+    const issueCards = issues.length === 0
+      ? '<div style="color:var(--text-muted);font-size:14px;padding:20px 0">🎉 No issues found! Great job.</div>'
+      : issues.map((issue, idx) => `
+          <div class="issue-card" data-sev="${issue.severity}" data-idx="${idx}" onclick="toggleIssue(${idx})">
+            <div class="issue-header">
+              <span class="sev-badge ${issue.severity}">${issue.severity}</span>
+              <div class="issue-title-wrap">
+                <div class="issue-title">${escHtml(issue.title)}</div>
+                <div class="issue-meta">
+                  <span>📁 ${escHtml(issue.category)}</span>
+                  ${issue.line_number ? `<span>📍 Line ${issue.line_number}</span>` : ''}
+                  ${issue.cwe_id ? `<span>🔗 ${escHtml(issue.cwe_id)}</span>` : ''}
+                </div>
+              </div>
+              <span class="issue-chevron">▶</span>
+            </div>
+            <div class="issue-body">
+              <p>${escHtml(issue.description)}</p>
+              <div class="recommendation">
+                <strong>💡 Recommendation</strong>
+                ${escHtml(issue.recommendation)}
+              </div>
+            </div>
+          </div>`).join('');
+
+    document.getElementById('resultsArea').innerHTML = `
+      <div class="score-section">
+        <div class="score-ring-wrap">
+          <svg width="100" height="100" viewBox="0 0 100 100">
+            <circle class="score-ring-bg"   cx="50" cy="50" r="${r}" />
+            <circle class="score-ring-fill" cx="50" cy="50" r="${r}"
+              stroke="${scoreColor}"
+              stroke-dasharray="${circ}"
+              stroke-dashoffset="${dash}"
+            />
+          </svg>
+          <div class="score-number" style="color:${scoreColor}">
+            ${score}
+            <span class="score-label">/ 100</span>
+          </div>
+        </div>
+
+        <div class="score-summary">
+          <h2>Security Score: ${getScoreLabel(score)}</h2>
+          <p>${escHtml(summary)}</p>
+          <div class="score-meta">
+            <span class="meta-chip">🤖 ${escHtml(model_used)}</span>
+            <span class="meta-chip">💻 ${escHtml(language)}</span>
+            <span class="meta-chip">🔴 ${counts.critical} critical</span>
+            <span class="meta-chip">🟠 ${counts.high} high</span>
+            <span class="meta-chip">🟡 ${counts.medium} medium</span>
+          </div>
+          <div class="export-btns">
+            <button class="btn btn-ghost" onclick="exportJSON()">⬇ Export JSON</button>
+            <button class="btn btn-ghost" onclick="exportMarkdown()">📄 Export Markdown</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="issues-header" style="margin-bottom:12px">
+          <h3>Issues Found</h3>
+          <span class="issues-count">${issues.length} total</span>
+        </div>
+        <div class="issues-list" id="issuesList">
+          ${issueCards}
+        </div>
+      </div>`;
+
+    applyFilters();
+  }
+
+  function getScoreLabel(score) {
+    if (score >= 90) return '✅ Excellent';
+    if (score >= 75) return '🟡 Good';
+    if (score >= 60) return '🟠 Fair';
+    if (score >= 40) return '🔴 Poor';
+    return '💀 Critical Risk';
+  }
+
+  function toggleIssue(idx) {
+    const card = document.querySelector(`.issue-card[data-idx="${idx}"]`);
+    if (card) card.classList.toggle('expanded');
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+
+  // ─── FILTERS ──────────────────────────────────────────────────
+  document.querySelectorAll('.filter-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      pill.classList.toggle('active');
+      const sev = pill.dataset.sev;
+      if (activeFilters.has(sev)) activeFilters.delete(sev);
+      else activeFilters.add(sev);
+      applyFilters();
+    });
+  });
+
+  function applyFilters() {
+    document.querySelectorAll('.issue-card[data-sev]').forEach(card => {
+      card.classList.toggle('hidden', !activeFilters.has(card.dataset.sev));
+    });
+  }
+
+  // ─── HISTORY ──────────────────────────────────────────────────
+  function addHistory(data, language) {
+    const entry = {
+      score: data.score,
+      issues: data.issues.length,
+      language,
+      model: data.model_used,
+      time: new Date().toLocaleTimeString(),
+      data,
+      code: lastCode
+    };
+    history.unshift(entry);
+    if (history.length > 5) history.pop();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (history.length === 0) {
+      list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px 0">No audits yet.</div>';
+      return;
+    }
+
+    let scoreColor;
+    list.innerHTML = history.map((h, i) => {
+      if      (h.score < 40) scoreColor = 'var(--critical)';
+      else if (h.score < 60) scoreColor = 'var(--high)';
+      else if (h.score < 75) scoreColor = 'var(--medium)';
+      else if (h.score < 90) scoreColor = 'var(--low)';
+      else                   scoreColor = 'var(--green)';
+      return `
+        <div class="history-item" onclick="restoreHistory(${i})">
+          <span class="history-score" style="color:${scoreColor}">${h.score}</span>
+          <span class="history-info">${h.language} · ${h.issues} issues</span>
+          <span class="history-time">${h.time}</span>
+        </div>`;
+    }).join('');
+  }
+
+  function restoreHistory(idx) {
+    const h = history[idx];
+    if (!h) return;
+    document.getElementById('codeEditor').value = h.code;
+    document.getElementById('langSelect').value  = h.language;
+    lastResult = h.data;
+    lastCode   = h.code;
+    renderResults(h.data);
+  }
+
+  // ─── EXPORT ───────────────────────────────────────────────────
+  function exportJSON() {
+    if (!lastResult) return;
+    const blob = new Blob([JSON.stringify(lastResult, null, 2)], { type: 'application/json' });
+    download(blob, 'codeshield-report.json');
+  }
+
+  function exportMarkdown() {
+    if (!lastResult) return;
+    const { score, summary, issues, model_used, language } = lastResult;
+    let md = `# CodeShield Security Report\n\n`;
+    md += `**Score:** ${score}/100  \n`;
+    md += `**Language:** ${language}  \n`;
+    md += `**Model:** ${model_used}  \n`;
+    md += `**Summary:** ${summary}\n\n`;
+    md += `## Issues (${issues.length})\n\n`;
+    issues.forEach(issue => {
+      md += `### [${issue.severity.toUpperCase()}] ${issue.title}\n`;
+      md += `- **Category:** ${issue.category}\n`;
+      if (issue.line_number) md += `- **Line:** ${issue.line_number}\n`;
+      if (issue.cwe_id)      md += `- **CWE:** ${issue.cwe_id}\n`;
+      md += `\n${issue.description}\n\n`;
+      md += `**Recommendation:** ${issue.recommendation}\n\n---\n\n`;
+    });
+    const blob = new Blob([md], { type: 'text/markdown' });
+    download(blob, 'codeshield-report.md');
+  }
+
+  function download(blob, filename) {
+    const a   = document.createElement('a');
+    a.href    = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ─── MODEL BADGE SYNC ─────────────────────────────────────────
+  document.getElementById('modelSelect').addEventListener('change', function() {
+    document.getElementById('modelBadge').textContent = this.value;
+  });
+
+  // ─── INIT ─────────────────────────────────────────────────────
+  checkHealth();
+</script>
+</body>
+</html>
