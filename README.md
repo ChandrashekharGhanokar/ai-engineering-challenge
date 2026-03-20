@@ -14,6 +14,7 @@ Daily hands-on projects building AI Engineering fundamentals from scratch.
 | [day06](./day06/) | Embeddings | Semantic similarity search with nomic-embed-text + Ollama  |
 | [day07](./day07/) | Research Agent | Autonomous deep research agent with Ollama tool-calling, Tavily search, and Jina Reader |
 | [day08](./day08/) | CodeShield | AI-powered code security auditor — FastAPI + Ollama (local LLM), detects injection, XSS, secrets, and more |
+| [day09](./day09/) | Prompt Injection Defender | CLI tool that classifies prompt injection risk with a guard LLM, then shows side-by-side protected vs unprotected responses — fully local via Ollama |
 
 ## Getting started
 
