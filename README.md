@@ -16,6 +16,7 @@ Daily hands-on projects building AI Engineering fundamentals from scratch.
 | [day08](./day08/) | CodeShield | AI-powered code security auditor — FastAPI + Ollama (local LLM), detects injection, XSS, secrets, and more |
 | [day09](./day09/) | Prompt Injection Defender | CLI tool that classifies prompt injection risk with a guard LLM, then shows side-by-side protected vs unprotected responses — fully local via Ollama |
 | [day10](./day10/clarity/) | XAI Classifier | Explainable AI text classifier — LLM assigns scores and signals, Python computes Shannon entropy, margin, and calibration — fully local via Ollama |
+| [day11](./day11/) | AI Tutor | Interactive AI tutor chatbot — teaches AI concepts from beginner to advanced via Llama 3.3 70B (HF Inference API) + Streamlit |
 
 ## Getting started
 
