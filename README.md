@@ -17,7 +17,7 @@ Daily hands-on projects building AI Engineering fundamentals from scratch.
 | [day09](./day09/) | Prompt Injection Defender | CLI tool that classifies prompt injection risk with a guard LLM, then shows side-by-side protected vs unprotected responses — fully local via Ollama |
 | [day10](./day10/clarity/) | XAI Classifier | Explainable AI text classifier — LLM assigns scores and signals, Python computes Shannon entropy, margin, and calibration — fully local via Ollama |
 | [day11](./day11/) | AI Tutor | Interactive AI tutor chatbot — teaches AI concepts from beginner to advanced via Llama 3.3 70B (HF Inference API) + Streamlit |
-
+| [day12](./day12/) | PR Reviewer Agent | AI-powered GitHub PR reviewer — analyzes code diffs, detects bugs/security/performance issues, and generates structured review feedback using local LLM (Qwen2.5 7B via Ollama) |
 ## Getting started
 
 Each day is a self-contained project with its own `README.md`, `requirements.txt`, and source code. Navigate into a day's folder and follow its setup instructions.
