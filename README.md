@@ -18,6 +18,7 @@ Daily hands-on projects building AI Engineering fundamentals from scratch.
 | [day10](./day10/clarity/) | XAI Classifier | Explainable AI text classifier — LLM assigns scores and signals, Python computes Shannon entropy, margin, and calibration — fully local via Ollama |
 | [day11](./day11/) | AI Tutor | Interactive AI tutor chatbot — teaches AI concepts from beginner to advanced via Llama 3.3 70B (HF Inference API) + Streamlit |
 | [day12](./day12/) | PR Reviewer Agent | AI-powered GitHub PR reviewer — analyzes code diffs, detects bugs/security/performance issues, and generates structured review feedback using local LLM (Qwen2.5 7B via Ollama) |
+| [day13](./day13/) | LinkedIn Post Writer | Conversational CLI agent — asks 5 questions, generates 3 LinkedIn post variations (bold claim, story, curiosity) using Ollama (llama3.2 + qwen2.5:7b) — fully local, no API key needed |
 ## Getting started
 
 Each day is a self-contained project with its own `README.md`, `requirements.txt`, and source code. Navigate into a day's folder and follow its setup instructions.
